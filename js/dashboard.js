@@ -77,15 +77,193 @@ function validateTransactionInput(itemName, amountString, category) {
   }
 
   // --- Category ---
-  const validCategories = ['Food', 'Transport', 'Fun'];
-  if (!validCategories.includes(category)) {
-    errors.push('Category must be one of Food, Transport, or Fun.');
+  const isValidCategory = categoryRegistry.some(function (entry) {
+    return entry.name === category;
+  });
+  if (!isValidCategory) {
+    errors.push('Category must be one of the registered categories.');
   }
 
   return { valid: errors.length === 0, errors };
 }
 
+/**
+ * Validates the input for a new custom category.
+ *
+ * Pure function: no side effects, no DOM access, no localStorage. Returns an
+ * object describing whether the input is valid and, if not, a list of
+ * human-readable error messages covering every violation found.
+ *
+ * Rules (Requirements 2.1, 2.2, 2.3, 2.4, 2.7):
+ *   - name is invalid if its trimmed value has fewer than one non-whitespace
+ *     character (empty or whitespace-only).
+ *   - name is invalid if it is longer than 50 characters.
+ *   - name is invalid if it already exists in `registry`, compared
+ *     case-insensitively.
+ *   - color is invalid if it is an empty or missing string.
+ *   - All violations are collected before returning (multi-error reporting).
+ *
+ * @param {string} name  - Raw category name text (may have leading/trailing whitespace).
+ * @param {string} color - Category color string (expected hex, e.g. "#ea580c").
+ * @param {Array<{ name: string, color: string, isDefault: boolean }>} registry
+ *   The current category registry to check for duplicate names.
+ * @returns {{ valid: boolean, errors: string[] }}
+ */
+function validateCategoryInput(name, color, registry) {
+  const errors = [];
+
+  // Defensively coerce non-strings so the checks below never throw.
+  const nameText = typeof name === 'string' ? name : '';
+  const trimmedName = nameText.trim();
+
+  // --- Name: must contain at least one non-whitespace character ---
+  if (trimmedName.length < 1) {
+    errors.push('Category name must contain at least one non-whitespace character.');
+  }
+
+  // --- Name: must not exceed 50 characters ---
+  if (nameText.length > 50) {
+    errors.push('Category name must be 50 characters or fewer.');
+  }
+
+  // --- Name: must not duplicate an existing entry (case-insensitive) ---
+  const registryArray = Array.isArray(registry) ? registry : [];
+  const lowerTrimmedName = trimmedName.toLowerCase();
+  if (trimmedName.length > 0) {
+    const isDuplicate = registryArray.some(function (entry) {
+      return typeof entry.name === 'string' &&
+        entry.name.trim().toLowerCase() === lowerTrimmedName;
+    });
+    if (isDuplicate) {
+      errors.push('Category name is already used.');
+    }
+  }
+
+  // --- Color: must be a non-empty string ---
+  const colorText = typeof color === 'string' ? color : '';
+  if (colorText.trim().length === 0) {
+    errors.push('A color must be selected.');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Builds the full Category_Registry from a list of custom category entries.
+ *
+ * Always prepends the three Default_Category entries, then appends each custom
+ * entry — skipping any whose name matches a Default_Category name
+ * (case-insensitive).
+ *
+ * Pure function: no DOM access, no localStorage reads or writes.
+ *
+ * Requirements: 1.1, 3.2
+ *
+ * @param {Array<{ name: string, color: string }>} customCategories
+ *   Custom category entries to merge into the registry.
+ * @returns {Array<{ name: string, color: string, isDefault: boolean }>}
+ *   Full registry with Default_Category entries first, followed by valid
+ *   custom entries.
+ */
+function buildCategoryRegistry(customCategories) {
+  const DEFAULT_CATEGORIES = [
+    { name: 'Food',      color: '#ea580c', isDefault: true },
+    { name: 'Transport', color: '#059669', isDefault: true },
+    { name: 'Fun',       color: '#db2777', isDefault: true },
+  ];
+
+  const defaultNames = DEFAULT_CATEGORIES.map(function (entry) {
+    return entry.name.toLowerCase();
+  });
+
+  const customArray = Array.isArray(customCategories) ? customCategories : [];
+  const customEntries = customArray
+    .filter(function (entry) {
+      if (!entry || typeof entry.name !== 'string') return false;
+      return !defaultNames.includes(entry.name.trim().toLowerCase());
+    })
+    .map(function (entry) {
+      return { name: entry.name, color: entry.color, isDefault: false };
+    });
+
+  return DEFAULT_CATEGORIES.concat(customEntries);
+}
+
 // === Domain Logic ===
+
+/**
+ * Computes the monthly spending summary grouped by category.
+ *
+ * Pure function: no DOM access, no side effects, no localStorage. Reads the
+ * module-level `categoryRegistry` to determine which category keys to include.
+ *
+ * Rules (Requirements 5.1, 5.2, 5.3, 5.4, 5.6, 5.7):
+ *   - Returns an object with one key per category in `categoryRegistry`; each
+ *     value is the two-decimal-place sum of amounts for transactions whose
+ *     `createdAt` field (ISO 8601 date string "YYYY-MM-DD") matches `year` and
+ *     `month`.
+ *   - Returns all-zero values when `year` is outside 2000–2100 or `month` is
+ *     outside 1–12.
+ *   - Transactions with null, undefined, or non-ISO-8601-date `createdAt` are
+ *     ignored.
+ *   - Rounding uses `Math.round(value * 100) / 100`.
+ *
+ * @param {Array<{id: string, itemName: string, amount: number, category: string, createdAt: string}>} transactions
+ * @param {number} year  - Integer year (valid range: 2000–2100 inclusive).
+ * @param {number} month - Integer month (valid range: 1–12 inclusive).
+ * @returns {{ [categoryName: string]: number }}
+ */
+function computeMonthlySummary(transactions, year, month) {
+  // Build the zero-value result object from the current registry.
+  var result = {};
+  categoryRegistry.forEach(function (entry) {
+    result[entry.name] = 0;
+  });
+
+  // Guard: year/month out of valid range → return all zeros.
+  if (year < 2000 || year > 2100 || month < 1 || month > 12) {
+    return result;
+  }
+
+  // Pad month to two digits for string comparison (e.g. 2026-04).
+  var monthStr = (month < 10 ? '0' : '') + month;
+  var prefix = year + '-' + monthStr + '-';
+
+  // ISO 8601 date format: YYYY-MM-DD (exactly 10 characters).
+  var isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+  transactions.forEach(function (transaction) {
+    var createdAt = transaction.createdAt;
+
+    // Ignore null, undefined, or non-string values.
+    if (createdAt == null || typeof createdAt !== 'string') {
+      return;
+    }
+
+    // Ignore strings that don't match YYYY-MM-DD format.
+    if (!isoDatePattern.test(createdAt)) {
+      return;
+    }
+
+    // Check that the date falls in the requested year/month.
+    if (createdAt.slice(0, 8) !== prefix) {
+      return;
+    }
+
+    // Accumulate to the matching category key (ignore unknown categories).
+    var cat = transaction.category;
+    if (Object.prototype.hasOwnProperty.call(result, cat)) {
+      result[cat] += transaction.amount;
+    }
+  });
+
+  // Apply two-decimal rounding to every accumulated total.
+  Object.keys(result).forEach(function (cat) {
+    result[cat] = Math.round(result[cat] * 100) / 100;
+  });
+
+  return result;
+}
 
 /**
  * Computes the total balance of a set of transactions.
@@ -108,6 +286,72 @@ function computeTotalBalance(transactions) {
   return Math.round(rawSum * 100 + Number.EPSILON) / 100;
 }
 
+/**
+ * Returns a sorted copy of the transactions array according to `sortOrder`.
+ *
+ * Pure function: never mutates the input array (Requirements 6.1–6.5).
+ *
+ * Sort orders:
+ *   'newest'      — createdAt descending; ties broken by id descending.
+ *   'oldest'      — createdAt ascending;  ties broken by id ascending.
+ *   'amount-desc' — amount descending;    ties broken by createdAt descending then id descending.
+ *   'amount-asc'  — amount ascending;     ties broken by createdAt ascending  then id ascending.
+ *   unknown       — returns a shallow copy in original order.
+ *
+ * @param {Array<{id: number, itemName: string, amount: number, category: string, createdAt: string}>} transactions
+ * @param {string} sortOrder
+ * @returns {Array}
+ */
+function sortTransactions(transactions, sortOrder) {
+  // Always work on a shallow copy so the input is never mutated.
+  var copy = transactions.slice();
+
+  if (sortOrder === 'newest') {
+    copy.sort(function (a, b) {
+      if (a.createdAt < b.createdAt) return 1;
+      if (a.createdAt > b.createdAt) return -1;
+      // Tie-break: id descending
+      if (a.id < b.id) return 1;
+      if (a.id > b.id) return -1;
+      return 0;
+    });
+  } else if (sortOrder === 'oldest') {
+    copy.sort(function (a, b) {
+      if (a.createdAt < b.createdAt) return -1;
+      if (a.createdAt > b.createdAt) return 1;
+      // Tie-break: id ascending
+      if (a.id < b.id) return -1;
+      if (a.id > b.id) return 1;
+      return 0;
+    });
+  } else if (sortOrder === 'amount-desc') {
+    copy.sort(function (a, b) {
+      if (b.amount !== a.amount) return b.amount - a.amount;
+      // Tie-break: createdAt descending
+      if (a.createdAt < b.createdAt) return 1;
+      if (a.createdAt > b.createdAt) return -1;
+      // Tie-break: id descending
+      if (a.id < b.id) return 1;
+      if (a.id > b.id) return -1;
+      return 0;
+    });
+  } else if (sortOrder === 'amount-asc') {
+    copy.sort(function (a, b) {
+      if (a.amount !== b.amount) return a.amount - b.amount;
+      // Tie-break: createdAt ascending
+      if (a.createdAt < b.createdAt) return -1;
+      if (a.createdAt > b.createdAt) return 1;
+      // Tie-break: id ascending
+      if (a.id < b.id) return -1;
+      if (a.id > b.id) return 1;
+      return 0;
+    });
+  }
+  // Unknown sortOrder: return the copy in original order (no sort applied).
+
+  return copy;
+}
+
 // === Domain Logic (Chart) ===
 
 /**
@@ -122,18 +366,27 @@ const CATEGORY_COLORS = {
 };
 
 /**
- * Aggregates transaction amounts by category, returning a fixed-shape object.
+ * Aggregates transaction amounts by category, returning an object keyed by
+ * every category name in the current `categoryRegistry`.
  *
- * Pure function: no side effects, no DOM access, no localStorage.
+ * Derives its category list from the module-level `categoryRegistry` so that
+ * custom categories are included automatically (Requirements 1.2, 1.3).
  * Each property value is the epsilon-rounded two-decimal sum of `amount` for
- * all transactions whose `category` matches that key (Requirement 4.1).
+ * all transactions whose `category` matches that key.
  * Categories with no matching transactions are `0`.
+ * Transactions whose category is not in the registry are silently ignored.
  *
  * @param {Array<{id: string, itemName: string, amount: number, category: string}>} transactions
- * @returns {{ Food: number, Transport: number, Fun: number }}
+ * @returns {Object.<string, number>} One key per registry entry; value is the rounded sum.
  */
 function aggregateByCategory(transactions) {
-  const totals = { Food: 0, Transport: 0, Fun: 0 };
+  // Build the totals object dynamically from the current categoryRegistry so
+  // that custom categories are included automatically (Requirements 1.2, 1.3).
+  var totals = {};
+  categoryRegistry.forEach(function (entry) {
+    totals[entry.name] = 0;
+  });
+
   transactions.forEach(function (transaction) {
     if (Object.prototype.hasOwnProperty.call(totals, transaction.category)) {
       totals[transaction.category] += transaction.amount;
@@ -165,8 +418,9 @@ function computeSegmentAngles(categoryTotals, grandTotal) {
   const segments = [];
   let accumulatedDegrees = 0;
 
-  // Iterate in a stable order so the chart layout is deterministic.
-  const categoryOrder = ['Food', 'Transport', 'Fun'];
+  // Iterate over all keys in categoryTotals (derived from categoryRegistry)
+  // so the chart reflects the full dynamic registry, not a hardcoded list.
+  const categoryOrder = Object.keys(categoryTotals);
   categoryOrder.forEach(function (category) {
     const categoryTotal = categoryTotals[category];
     if (categoryTotal <= 0) {
@@ -178,11 +432,18 @@ function computeSegmentAngles(categoryTotals, grandTotal) {
     const startAngle = accumulatedDegrees;
     const endAngle = startAngle + angleDegrees;
 
+    // Look up color from the module-level categoryRegistry by name (case-sensitive).
+    // Fall back to a neutral color if no matching entry is found.
+    const registryEntry = categoryRegistry.find(function (entry) {
+      return entry.name === category;
+    });
+    const segmentColor = registryEntry ? registryEntry.color : '#aaaaaa';
+
     segments.push({
       category: category,
       startAngle: startAngle,
       endAngle: endAngle,
-      color: CATEGORY_COLORS[category],
+      color: segmentColor,
     });
 
     accumulatedDegrees = endAngle;
@@ -281,6 +542,9 @@ function renderTransactionList(transactions) {
   if (!listContainer) {
     return;
   }
+
+  // Apply current sort order before rendering (Requirement 6.6).
+  transactions = sortTransactions(transactions, activeSortOrder);
 
   // Clear any previous content.
   listContainer.innerHTML = '';
@@ -381,9 +645,13 @@ function renderChart(transactions) {
   // Clear any previous content.
   chartContainer.innerHTML = '';
 
-  const grandTotal = computeTotalBalance(transactions);
+  const filteredTransactions = activeMonth !== null
+    ? transactions.filter(function (t) { return t.createdAt.startsWith(activeMonth); })
+    : transactions;
 
-  if (transactions.length === 0 || grandTotal === 0) {
+  const grandTotal = computeTotalBalance(filteredTransactions);
+
+  if (filteredTransactions.length === 0 || grandTotal === 0) {
     const emptyMessage = document.createElement('p');
     emptyMessage.className = 'empty-state';
     emptyMessage.textContent = 'No spending data is available';
@@ -391,7 +659,7 @@ function renderChart(transactions) {
     return;
   }
 
-  const categoryTotals = aggregateByCategory(transactions);
+  const categoryTotals = aggregateByCategory(filteredTransactions);
   const segments = computeSegmentAngles(categoryTotals, grandTotal);
 
   const svgNamespace = 'http://www.w3.org/2000/svg';
@@ -431,6 +699,131 @@ function renderChart(transactions) {
   });
 
   chartContainer.appendChild(svgElement);
+}
+
+/**
+ * Renders the Monthly Summary Panel into the `#summary-panel` DOM container.
+ *
+ * Writes the human-readable month/year heading into `#summary-month-title`
+ * (e.g. "November 2026"), then either renders per-category spending rows or
+ * an empty-state message, depending on whether any transactions exist for the
+ * requested period (Requirements 4.1, 4.2, 4.5, 4.6, 4.9, 4.10).
+ *
+ * Layout written into `#summary-content`:
+ *   - Zero totals: one `<p class="empty-state">` with the "No spending" message.
+ *   - Non-zero totals: one `<div class="summary-row">` per category with a
+ *     nonzero total; each row contains:
+ *       - `<span class="summary-category-name">` — the category name.
+ *       - `<span class="summary-amount">` — the total formatted as `$X.XX`.
+ *
+ * Silently skips if `#summary-panel`, `#summary-content`, or
+ * `#summary-month-title` are absent (defensive guard).
+ *
+ * @param {Array<{id: string, itemName: string, amount: number, category: string, createdAt: string}>} transactions
+ * @param {number} year  - Integer year (valid range: 2000–2100 inclusive).
+ * @param {number} month - Integer month (valid range: 1–12 inclusive).
+ * @param {Array<{ name: string, color: string, isDefault: boolean }>} registry
+ *   The current category registry (used only for display ordering).
+ */
+function renderSummaryPanel(transactions, year, month, registry) {
+  var summaryPanel = document.getElementById('summary-panel');
+  var summaryContent = document.getElementById('summary-content');
+  var summaryMonthTitle = document.getElementById('summary-month-title');
+
+  // Silently skip if any required element is missing.
+  if (!summaryPanel || !summaryContent || !summaryMonthTitle) {
+    return;
+  }
+
+  // Build the human-readable month/year heading (e.g. "November 2026").
+  var MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  var monthLabel = (month >= 1 && month <= 12) ? MONTH_NAMES[month - 1] : 'Unknown';
+  var headingText = monthLabel + ' ' + year;
+  summaryMonthTitle.textContent = headingText;
+
+  // Clear any previously rendered content.
+  summaryContent.innerHTML = '';
+
+  // Compute per-category totals for the requested period.
+  var totals = computeMonthlySummary(transactions, year, month);
+
+  // Check whether any category has a nonzero total.
+  var hasData = Object.keys(totals).some(function (cat) {
+    return totals[cat] > 0;
+  });
+
+  if (!hasData) {
+    // Empty-state: year/month out of range, or no transactions for this period.
+    var emptyParagraph = document.createElement('p');
+    emptyParagraph.className = 'empty-state';
+    emptyParagraph.textContent = 'No spending for ' + headingText;
+    summaryContent.appendChild(emptyParagraph);
+    return;
+  }
+
+  // Render one row per category that has a nonzero total.
+  // Follow the registry order so rows always appear in a predictable sequence.
+  var registryArray = Array.isArray(registry) ? registry : [];
+  registryArray.forEach(function (entry) {
+    var total = totals[entry.name];
+    if (!total || total <= 0) {
+      return; // skip categories with no spending this month
+    }
+
+    var rowDiv = document.createElement('div');
+    rowDiv.className = 'summary-row';
+
+    var nameSpan = document.createElement('span');
+    nameSpan.className = 'summary-category-name';
+    nameSpan.textContent = entry.name;
+
+    var amountSpan = document.createElement('span');
+    amountSpan.className = 'summary-amount';
+    amountSpan.textContent = '$' + total.toFixed(2);
+
+    rowDiv.appendChild(nameSpan);
+    rowDiv.appendChild(amountSpan);
+    summaryContent.appendChild(rowDiv);
+  });
+}
+
+/**
+ * Re-populates the `#transaction-category` (alias `#category-select`) dropdown
+ * with the current Category_Registry entries.
+ *
+ * Clears all existing options, adds a placeholder option first, then appends
+ * one `<option>` per registry entry in registry order (Default_Category first,
+ * then Custom_Category).
+ *
+ * Silently skips if the element is absent (Requirements 1.5, 3.4).
+ *
+ * @param {CategoryEntry[]} registry - The current category registry array.
+ */
+function refreshCategoryDropdown(registry) {
+  var selectElement = document.getElementById('transaction-category');
+  if (!selectElement) {
+    return;
+  }
+
+  // Remove all existing options.
+  selectElement.innerHTML = '';
+
+  // Placeholder option.
+  var placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Select category';
+  selectElement.appendChild(placeholder);
+
+  // One option per registry entry.
+  registry.forEach(function (entry) {
+    var option = document.createElement('option');
+    option.value = entry.name;
+    option.textContent = entry.name;
+    selectElement.appendChild(option);
+  });
 }
 
 // === Persistence ===
@@ -582,10 +975,111 @@ function loadTransactions() {
   return { transactions: result.data, loadError: false };
 }
 
+/**
+ * Writes the custom categories array to localStorage under the key
+ * `'life-dashboard-custom-categories'`.
+ *
+ * Returns `true` on success. If localStorage is unavailable or the write
+ * throws for any reason (e.g. QuotaExceededError), returns `false` without
+ * mutating any in-memory state (Requirements 1.4, 3.1).
+ *
+ * @param {Array<{ name: string, color: string }>} customCategories
+ *   The array of custom category entries to persist.
+ * @returns {boolean} `true` if the write succeeded, `false` otherwise.
+ */
+function saveCustomCategories(customCategories) {
+  try {
+    localStorage.setItem('life-dashboard-custom-categories', JSON.stringify(customCategories));
+    return true;
+  } catch (_writeError) {
+    return false;
+  }
+}
+
+/**
+ * Reads Custom_Category entries from localStorage.
+ *
+ * Returns `{ customCategories: [], loadError: false }` when the key is absent.
+ * Returns `{ customCategories: [], loadError: true }` when the stored value
+ * cannot be parsed as JSON or is not a valid array of `{ name: string, color: string }`
+ * objects (Requirements 1.8, 1.9, 3.3).
+ * Returns `{ customCategories: <parsed array>, loadError: false }` on success.
+ *
+ * @returns {{ customCategories: Array<{ name: string, color: string }>, loadError: boolean }}
+ */
+function loadCustomCategories() {
+  var raw = localStorage.getItem('life-dashboard-custom-categories');
+
+  // Key absent — normal first-run case
+  if (raw === null) {
+    return { customCategories: [], loadError: false };
+  }
+
+  // Attempt to parse; treat any parse error as invalid data
+  var parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (_parseError) {
+    return { customCategories: [], loadError: true };
+  }
+
+  // Must be an array
+  if (!Array.isArray(parsed)) {
+    return { customCategories: [], loadError: true };
+  }
+
+  // Every element must be a plain object with string `name` and string `color`
+  for (var i = 0; i < parsed.length; i++) {
+    var entry = parsed[i];
+    if (
+      entry === null ||
+      typeof entry !== 'object' ||
+      Array.isArray(entry) ||
+      typeof entry.name !== 'string' ||
+      typeof entry.color !== 'string'
+    ) {
+      return { customCategories: [], loadError: true };
+    }
+  }
+
+  return { customCategories: parsed, loadError: false };
+}
+
 // === Controller ===
+
+// Category registry — the master list of available categories.
+// Each entry: { name: string, color: string, isDefault: boolean }
+// Default_Category entries are pre-seeded here and must not be deleted by the user
+// (Requirement 6.1). User-created entries are appended at runtime (Requirement 6.2).
+var categoryRegistry = [
+  { name: 'Food',      color: '#ea580c', isDefault: true },
+  { name: 'Transport', color: '#059669', isDefault: true },
+  { name: 'Fun',       color: '#db2777', isDefault: true },
+];
+
+// User-added custom category entries (not including Default_Category defaults).
+// Each entry shape: { name: string, color: string }
+// Populated during initDashboard from localStorage, then grown by handleAddCategory.
+// Kept separate from categoryRegistry so buildCategoryRegistry can always
+// reconstruct the full registry deterministically from just this array.
+var customCategories = [];
+
+// Active sort order for the transaction list (Requirement 3.1).
+// Supported values: 'newest' | 'oldest' | 'amount-desc' | 'amount-asc'
+// Defaults to 'newest' so the most recent entry appears at the top.
+var activeSortOrder = 'newest';
+
+// Active month filter (ISO-8601 'YYYY-MM' string, or null for "all months") (Requirement 4.1).
+// When non-null, only transactions whose createdAt timestamp falls in this month are shown.
+var activeMonth = null;
 
 // Module-level in-memory transactions state. Populated by initDashboard().
 // All controller functions read and mutate this variable directly.
+// Each transaction object shape:
+//   { id: string, itemName: string, amount: number, category: string,
+//     createdAt: string }  — createdAt is an ISO-8601 datetime string
+//     (e.g. "2024-06-01T12:00:00.000Z") recorded at the moment the transaction
+//     is created (Requirement 1.1). Used for chronological sorting and month filtering.
 var transactions = [];
 
 /**
@@ -626,6 +1120,20 @@ function renderAll() {
   renderTransactionList(transactions);
   renderTotalBalance(transactions);
   renderChart(transactions);
+
+  // Derive year and month from the activeMonth 'YYYY-MM' string, or fall back
+  // to the current calendar month when activeMonth is null.
+  var activeMonth_year, activeMonth_month;
+  if (activeMonth !== null) {
+    var parts = activeMonth.split('-');
+    activeMonth_year = parseInt(parts[0], 10);
+    activeMonth_month = parseInt(parts[1], 10);
+  } else {
+    var now = new Date();
+    activeMonth_year = now.getFullYear();
+    activeMonth_month = now.getMonth() + 1;
+  }
+  renderSummaryPanel(transactions, activeMonth_year, activeMonth_month, categoryRegistry);
 }
 
 /**
@@ -773,6 +1281,170 @@ function handleFormSubmit(event) {
 }
 
 /**
+ * Handles the category form submit event.
+ *
+ * Control flow (Requirements 2.1–2.9, 3.1):
+ * 1. Prevents the default form submission.
+ * 2. Reads `name` from `#category-name-input` and `color` from
+ *    `#category-color-input`.
+ * 3. Validates via `validateCategoryInput(name, color, categoryRegistry)`:
+ *    - Invalid: joins error strings with '. ' and writes them into
+ *      `#category-validation-message`; returns without mutating state.
+ *    - Valid: clears `#category-validation-message`.
+ * 4. Creates a new `{ name: name.trim(), color }` entry and pushes it onto
+ *    the module-level `customCategories` array.
+ * 5. Rebuilds `categoryRegistry` by calling `buildCategoryRegistry(customCategories)`.
+ * 6. Calls `saveCustomCategories(customCategories)`:
+ *    - If it returns `false`, shows the `status-banner--category-data-error`
+ *      banner via `showStatusBanner` and returns without clearing the form
+ *      (Requirement 2.6).
+ * 7. On successful save: clears `#category-name-input`, clears
+ *    `#category-validation-message`, calls `refreshCategoryDropdown(categoryRegistry)`,
+ *    and calls `renderAll()`.
+ *
+ * @param {Event} event - The form submit event.
+ */
+function handleAddCategory(event) {
+  event.preventDefault();
+
+  // Read field values.
+  var categoryNameInput = document.getElementById('category-name-input');
+  var categoryColorInput = document.getElementById('category-color-input');
+  var categoryValidationMessage = document.getElementById('category-validation-message');
+
+  var name = categoryNameInput ? categoryNameInput.value : '';
+  var color = categoryColorInput ? categoryColorInput.value : '';
+
+  // Validate; bail out if invalid.
+  var validationResult = validateCategoryInput(name, color, categoryRegistry);
+  if (!validationResult.valid) {
+    if (categoryValidationMessage) {
+      categoryValidationMessage.textContent = validationResult.errors.join('. ');
+    }
+    return;
+  }
+
+  // Clear any previous validation message.
+  if (categoryValidationMessage) {
+    categoryValidationMessage.textContent = '';
+  }
+
+  // Build and append the new custom entry.
+  var newEntry = { name: name.trim(), color: color };
+  customCategories.push(newEntry);
+
+  // Rebuild the full registry from the updated custom list.
+  categoryRegistry = buildCategoryRegistry(customCategories);
+
+  // Persist the custom categories.
+  var saveSucceeded = saveCustomCategories(customCategories);
+  if (!saveSucceeded) {
+    showStatusBanner(
+      'status-banner--category-data-error',
+      'Could not save category — changes may be lost on refresh.'
+    );
+    return;
+  }
+
+  // Clear the name input (color input retains its last value as a sensible default).
+  if (categoryNameInput) {
+    categoryNameInput.value = '';
+  }
+
+  // Refresh the transaction category dropdown and re-render all views.
+  refreshCategoryDropdown(categoryRegistry);
+  renderAll();
+}
+
+/**
+ * Handles a month navigation button click, moving `activeMonth` forward or
+ * backward by one calendar month.
+ *
+ * Steps (Requirements 5.5, 5.9, 5.10):
+ * 1. If `activeMonth` is null, initialise it to the current year/month in
+ *    'YYYY-MM' format before applying the direction.
+ * 2. Parse the year and month integers from `activeMonth`.
+ * 3. Advance (`'next'`) or retreat (`'prev'`) by one month, rolling the year
+ *    when the month crosses the December/January boundary.
+ * 4. Write the new value back to `activeMonth` as 'YYYY-MM'.
+ * 5. Update `#month-display` text content with the human-readable label
+ *    (e.g. "May 2025").
+ * 6. Call `renderAll()` to refresh all panels.
+ *
+ * @param {'prev'|'next'} direction - Which direction to navigate.
+ */
+function handleMonthNav(direction) {
+  // Step 1: initialise to the current calendar month if activeMonth is null.
+  if (activeMonth === null) {
+    var now = new Date();
+    var initYear = now.getFullYear();
+    var initMonth = now.getMonth() + 1; // 1–12
+    var initMonthStr = (initMonth < 10 ? '0' : '') + initMonth;
+    activeMonth = initYear + '-' + initMonthStr;
+  }
+
+  // Step 2: parse current year and month from the 'YYYY-MM' string.
+  var parts = activeMonth.split('-');
+  var year = parseInt(parts[0], 10);
+  var month = parseInt(parts[1], 10);
+
+  // Step 3: advance or retreat, with year rollover.
+  if (direction === 'next') {
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  } else {
+    // 'prev'
+    month -= 1;
+    if (month < 1) {
+      month = 12;
+      year -= 1;
+    }
+  }
+
+  // Step 4: write the new 'YYYY-MM' string back.
+  var monthStr = (month < 10 ? '0' : '') + month;
+  activeMonth = year + '-' + monthStr;
+
+  // Step 5: update the #month-display element with the human-readable label.
+  var MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
+  ];
+  var monthLabel = MONTH_NAMES[month - 1];
+  var monthDisplayElement = document.getElementById('month-display');
+  if (monthDisplayElement) {
+    monthDisplayElement.textContent = monthLabel + ' ' + year;
+  }
+
+  // Step 6: re-render all views.
+  renderAll();
+}
+
+/**
+ * Handles a change on the sort-order `<select>` element.
+ *
+ * Steps (Requirement 6.7):
+ * 1. Read the new sort-order value from `event.target.value`.
+ * 2. Update the module-level `activeSortOrder` to the new value.
+ * 3. Call `renderAll()` to re-render all views with the new sort applied.
+ *
+ * @param {Event} event - The `change` event fired by the sort-order select.
+ */
+function handleSortChange(event) {
+  // Step 1: read the chosen sort order from the select element.
+  var newSortOrder = event.target.value;
+
+  // Step 2: persist it into module-level state.
+  activeSortOrder = newSortOrder;
+
+  // Step 3: re-render all views so the transaction list reflects the new order.
+  renderAll();
+}
+
+/**
  * Initialises the Dashboard on DOMContentLoaded.
  *
  * Steps (Design: Controller / Initialization):
@@ -790,6 +1462,20 @@ function initDashboard() {
   if (loadResult.loadError) {
     showLoadError();
   }
+
+  // Load persisted custom categories (Requirement 1.7, 6.7).
+  var categoryLoadResult = loadCustomCategories();
+  if (categoryLoadResult.loadError) {
+    showStatusBanner('status-banner--category-data-error', 'Could not load saved categories. Your custom categories may have been reset.');
+  } else {
+    customCategories = categoryLoadResult.customCategories;
+  }
+
+  // Rebuild the category registry from the loaded custom categories (Requirement 1.8, 6.7).
+  categoryRegistry = buildCategoryRegistry(customCategories);
+
+  // Populate the category <select> from the registry (Requirement 1.9, 3.3).
+  refreshCategoryDropdown(categoryRegistry);
 
   // Render immediately with the loaded (or empty) state.
   renderAll();
@@ -812,6 +1498,33 @@ function initDashboard() {
         }
       }
     });
+  }
+
+  // Wire add-category form (Requirement 2.8).
+  var addCategoryForm = document.getElementById('add-category-form');
+  if (addCategoryForm && !addCategoryForm._categoryHandlerAttached) {
+    addCategoryForm.addEventListener('submit', handleAddCategory);
+    addCategoryForm._categoryHandlerAttached = true;
+  }
+
+  // Wire month-navigation buttons (Requirement 3.4, 5.9).
+  var prevMonthBtn = document.getElementById('prev-month-btn');
+  if (prevMonthBtn && !prevMonthBtn._monthNavHandlerAttached) {
+    prevMonthBtn.addEventListener('click', function () { handleMonthNav('prev'); });
+    prevMonthBtn._monthNavHandlerAttached = true;
+  }
+
+  var nextMonthBtn = document.getElementById('next-month-btn');
+  if (nextMonthBtn && !nextMonthBtn._monthNavHandlerAttached) {
+    nextMonthBtn.addEventListener('click', function () { handleMonthNav('next'); });
+    nextMonthBtn._monthNavHandlerAttached = true;
+  }
+
+  // Wire sort-order select (Requirement 3.3).
+  var sortSelect = document.getElementById('sort-select');
+  if (sortSelect && !sortSelect._sortHandlerAttached) {
+    sortSelect.addEventListener('change', handleSortChange);
+    sortSelect._sortHandlerAttached = true;
   }
 }
 
@@ -877,6 +1590,12 @@ function handleDeleteTransaction(transactionId) {
 if (typeof window !== 'undefined') {
   window.DashboardLogic = window.DashboardLogic || {};
   window.DashboardLogic.validateTransactionInput = validateTransactionInput;
+  window.DashboardLogic.validateCategoryInput = validateCategoryInput;
+  window.DashboardLogic.buildCategoryRegistry = buildCategoryRegistry;
+  window.DashboardLogic.computeMonthlySummary = computeMonthlySummary;
+  window.DashboardLogic.sortTransactions = sortTransactions;
+  window.DashboardLogic.saveCustomCategories = saveCustomCategories;
+  window.DashboardLogic.loadCustomCategories = loadCustomCategories;
   window.DashboardLogic.serializeTransactions = serializeTransactions;
   window.DashboardLogic.deserializeTransactions = deserializeTransactions;
   window.DashboardLogic.saveTransactions = saveTransactions;
@@ -886,6 +1605,8 @@ if (typeof window !== 'undefined') {
   window.DashboardLogic.computeSegmentAngles = computeSegmentAngles;
   window.DashboardLogic.describeArc = describeArc;
   window.DashboardLogic.renderTransactionList = renderTransactionList;
+  window.DashboardLogic.renderSummaryPanel = renderSummaryPanel;
+  window.DashboardLogic.refreshCategoryDropdown = refreshCategoryDropdown;
   window.DashboardLogic.renderAll = renderAll;
   window.DashboardLogic.showFormValidation = showFormValidation;
   window.DashboardLogic.clearFormValidation = clearFormValidation;
@@ -893,11 +1614,20 @@ if (typeof window !== 'undefined') {
   window.DashboardLogic.showLoadError = showLoadError;
   window.DashboardLogic.showDeleteFailure = showDeleteFailure;
   window.DashboardLogic.handleFormSubmit = handleFormSubmit;
+  window.DashboardLogic.handleAddCategory = handleAddCategory;
+  window.DashboardLogic.handleMonthNav = handleMonthNav;
+  window.DashboardLogic.handleSortChange = handleSortChange;
   window.DashboardLogic.initDashboard = initDashboard;
 }
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     validateTransactionInput,
+    validateCategoryInput,
+    buildCategoryRegistry,
+    computeMonthlySummary,
+    sortTransactions,
+    saveCustomCategories,
+    loadCustomCategories,
     serializeTransactions,
     deserializeTransactions,
     saveTransactions,
@@ -909,6 +1639,8 @@ if (typeof module !== 'undefined' && module.exports) {
     describeArc,
     renderChart,
     renderTransactionList,
+    renderSummaryPanel,
+    refreshCategoryDropdown,
     handleDeleteTransaction,
     renderAll,
     showFormValidation,
@@ -917,9 +1649,20 @@ if (typeof module !== 'undefined' && module.exports) {
     showLoadError,
     showDeleteFailure,
     handleFormSubmit,
+    handleAddCategory,
+    handleMonthNav,
+    handleSortChange,
     initDashboard,
     // Expose the module-level state so tests can seed and read it directly.
     get transactions() { return transactions; },
     set transactions(value) { transactions = value; },
+    get categoryRegistry() { return categoryRegistry; },
+    set categoryRegistry(value) { categoryRegistry = value; },
+    get customCategories() { return customCategories; },
+    set customCategories(value) { customCategories = value; },
+    get activeMonth() { return activeMonth; },
+    set activeMonth(value) { activeMonth = value; },
+    get activeSortOrder() { return activeSortOrder; },
+    set activeSortOrder(value) { activeSortOrder = value; },
   };
 }

@@ -32,8 +32,41 @@
       <div id="form-validation-message" role="alert"></div>
     </form>
 
+    <section id="category-form-section" aria-label="Add custom category">
+      <h2>Add Custom Category</h2>
+      <form id="add-category-form" novalidate>
+        <label for="category-name-input">Category name</label>
+        <input id="category-name-input" type="text" maxlength="50" placeholder="e.g. Health">
+
+        <label for="category-color-input">Color</label>
+        <input id="category-color-input" type="color" value="#6366f1">
+
+        <button id="category-submit-button" type="submit">Add Category</button>
+        <div id="category-validation-message" role="alert"></div>
+      </form>
+    </section>
+
+    <div id="sort-control" class="sort-control">
+      <label for="sort-select">Sort by</label>
+      <select id="sort-select">
+        <option value="default">Default</option>
+        <option value="amount-asc">Amount: Low to High</option>
+        <option value="amount-desc">Amount: High to Low</option>
+        <option value="category-az">Category: A–Z</option>
+      </select>
+    </div>
+
     <div id="transaction-list" aria-label="Transaction list"></div>
     <div id="visual-chart" aria-label="Spending chart"></div>
+
+    <section id="summary-panel" aria-label="Monthly summary">
+      <div class="summary-nav">
+        <button id="prev-month-btn" aria-label="Previous month">&#8249;</button>
+        <h2 id="summary-month-title"></h2>
+        <button id="next-month-btn" aria-label="Next month">&#8250;</button>
+      </div>
+      <div id="summary-content"></div>
+    </section>
   </main>
 
   <script src="js/dashboard.js" defer></script>

@@ -88,6 +88,8 @@
   --card-max-width: 720px;
   --list-max-height: 360px;
   --chart-size: 320px;
+  --summary-title-font-size: 20px;
+  --nav-button-size: 32px;
 }
 
 /* ------------------------------------------------------------------ */
@@ -404,10 +406,11 @@ main {
   border-radius: var(--border-radius-small);
 }
 
-/* Generic error look shared by persistence and data-load errors. */
+/* Generic error look shared by persistence, data-load, and category-data errors. */
 .status-banner--error,
 .status-banner--persistence-error,
-.status-banner--load-error {
+.status-banner--load-error,
+.status-banner--category-data-error {
   color: var(--error-banner-color);
   background-color: var(--error-banner-background);
   border-color: var(--error-banner-color);
@@ -418,4 +421,252 @@ main {
   color: var(--delete-failure-color);
   background-color: var(--delete-failure-background);
   border-color: var(--delete-failure-color);
+}
+
+/* ------------------------------------------------------------------ */
+/* Category form section (#category-form-section)                      */
+/* Requirements: 1.5, 2.1                                              */
+/* ------------------------------------------------------------------ */
+#category-form-section {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-subtle);
+  padding: var(--spacing-medium);
+}
+
+#category-form-section h2 {
+  margin: 0 0 var(--spacing-medium) 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+#add-category-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#add-category-form label {
+  font-size: var(--body-font-size);
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+#add-category-form label + input {
+  margin-bottom: var(--spacing-small);
+}
+
+#category-name-input {
+  font-size: var(--body-font-size);
+  padding: var(--spacing-small);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
+  background-color: #ffffff;
+  color: var(--text-color);
+  width: 100%;
+}
+
+#category-name-input::placeholder {
+  color: var(--muted-text-color);
+}
+
+#category-name-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-color-light);
+}
+
+#category-color-input {
+  padding: 2px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
+  background-color: #ffffff;
+  width: 48px;
+  height: 36px;
+  cursor: pointer;
+}
+
+#category-color-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-color-light);
+}
+
+#category-submit-button {
+  font-size: var(--body-font-size);
+  font-weight: 700;
+  color: #ffffff;
+  background-color: var(--accent-color);
+  border: none;
+  border-radius: var(--border-radius-small);
+  padding: var(--spacing-small) var(--spacing-medium);
+  margin-top: var(--spacing-small);
+  width: 100%;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+#category-submit-button:hover {
+  background-color: var(--accent-color-dark);
+}
+
+#category-submit-button:active {
+  transform: translateY(1px);
+}
+
+#category-validation-message {
+  margin-top: var(--spacing-small);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--validation-error-color);
+}
+
+#category-validation-message:empty {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Sort control (#sort-control)                                        */
+/* Requirements: 6.7                                                   */
+/* ------------------------------------------------------------------ */
+#sort-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--spacing-small);
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-subtle);
+  padding: var(--spacing-small) var(--spacing-medium);
+}
+
+#sort-control label {
+  font-size: var(--body-font-size);
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+#sort-select {
+  font-size: var(--body-font-size);
+  padding: var(--spacing-small);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
+  background-color: #ffffff;
+  color: var(--text-color);
+  cursor: pointer;
+  flex: 1 1 auto;
+}
+
+#sort-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-color-light);
+}
+
+/* ------------------------------------------------------------------ */
+/* Monthly summary panel (#summary-panel)                             */
+/* Requirements: 5.1, 5.9                                             */
+/* ------------------------------------------------------------------ */
+#summary-panel {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-subtle);
+  padding: var(--spacing-medium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+}
+
+/* Month navigator row */
+.summary-nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-small);
+}
+
+.summary-nav #prev-month-btn,
+.summary-nav #next-month-btn {
+  width: var(--nav-button-size);
+  height: var(--nav-button-size);
+  min-width: var(--nav-button-size);
+  min-height: var(--nav-button-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-color);
+  background-color: var(--accent-color-light);
+  border: 1px solid var(--accent-color);
+  border-radius: var(--border-radius-small);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  padding: 0;
+  line-height: 1;
+}
+
+.summary-nav #prev-month-btn:hover,
+.summary-nav #next-month-btn:hover {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+.summary-nav #prev-month-btn:active,
+.summary-nav #next-month-btn:active {
+  transform: translateY(1px);
+}
+
+#summary-month-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--summary-title-font-size);
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-color);
+}
+
+/* Summary content rows */
+#summary-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-title {
+  font-size: var(--summary-title-font-size);
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0 0 var(--spacing-small) 0;
+}
+
+.summary-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-small) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-category-name {
+  text-align: left;
+  color: var(--text-color);
+  font-size: var(--body-font-size);
+}
+
+.summary-amount {
+  text-align: right;
+  font-weight: 700;
+  color: var(--accent-color-dark);
+  font-size: var(--body-font-size);
 }
