@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Dashboard</title>
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+  <header class="shop-banner">
+    <h1>Life Dashboard</h1>
+  </header>
+
+  <main>
+    <div id="total-balance-display" aria-label="Total balance"></div>
+
+    <form id="transaction-form" novalidate>
+      <label for="item-name-input">Item name</label>
+      <input id="item-name-input" type="text" maxlength="100" placeholder="e.g. Lunch">
+
+      <label for="amount-input">Amount</label>
+      <input id="amount-input" type="text" inputmode="decimal" placeholder="0.00">
+
+      <label for="category-select">Category</label>
+      <select id="category-select">
+        <option value="Food">Food</option>
+        <option value="Transport">Transport</option>
+        <option value="Fun">Fun</option>
+      </select>
+
+      <button id="submit-button" type="submit">Add Transaction</button>
+      <div id="form-validation-message" role="alert"></div>
+    </form>
+
+    <div id="transaction-list" aria-label="Transaction list"></div>
+    <div id="visual-chart" aria-label="Spending chart"></div>
+  </main>
+
+  <script src="js/dashboard.js" defer></script>
+</body>
+</html>

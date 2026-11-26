@@ -1,0 +1,16 @@
+{
+  "name": "todo-list-life-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "description": "Todo List Life Dashboard - a client-side expense tracker (dev tooling only; not part of the deployed bundle).",
+  "scripts": {
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "fast-check": "^3.19.0",
+    "jsdom": "^24.1.0",
+    "vitest": "^2.1.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Life Dashboard",
+  "version": "1.0.0",
+  "description": "A client-side expense tracker dashboard with an online-shop storefront theme.",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Life Dashboard"
+  }
+}

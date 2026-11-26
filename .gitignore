@@ -1,0 +1,10 @@
+# Dev tooling (not part of the deployed static bundle)
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log

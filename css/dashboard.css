@@ -1,0 +1,421 @@
+/*
+ * dashboard.css - visual styles for the Todo List Life Dashboard (Online Shop Theme).
+ *
+ * The companion JavaScript (js/dashboard.js) is organized into logical sections:
+ *   Validation, Domain Logic, Renderers, Persistence, Controller.
+ *
+ * Online Shop Theme: a card-based e-commerce storefront aesthetic applied to the
+ * four components - a shop-style header banner, the Total Balance Display (most
+ * prominent type, top of page), an "add to cart" Input Form, a scrollable cart-style
+ * Transaction List, and a storefront card containing the SVG Visual Chart. One
+ * accent color, rounded corners, subtle shadows, and uniform spacing tie the theme
+ * together (Requirement 9.1).
+ *
+ * Class names reused by the JS renderers (Tasks 5.1, 6.1, 7.1, 8.1) - kept stable so
+ * the JS and CSS share one vocabulary:
+ *   .transaction-row                  one row per stored Transaction (list)
+ *   .transaction-item-name              the item name cell in a row
+ *   .transaction-amount                 the amount, styled as a price tag
+ *   .transaction-category               the category cell wrapper in a row
+ *   .category-badge                     colored category badge (matches chart)
+ *   .category-badge--food              per-category color modifier
+ *   .category-badge--transport          per-category color modifier
+ *   .category-badge--fun                per-category color modifier
+ *   .delete-button                      the remove/delete control in a row
+ *   .chart-label                        SVG <text> label on a pie segment
+ *   .empty-state                        placeholder for the empty list / chart
+ *   .status-banner                      base non-blocking status banner
+ *   .status-banner--error               generic red error banner
+ *   .status-banner--persistence-error   persistence (save) failure banner
+ *   .status-banner--load-error          data-load failure banner
+ *   .status-banner--delete-failure      delete-failure banner
+ *
+ * No external resources, no web fonts, no @import of external URLs: this stylesheet
+ * is pure CSS and works identically under file://, GitHub Pages, and the extension
+ * popup (Requirements 6.2, 7.3).
+ */
+
+/* ------------------------------------------------------------------ */
+/* Design tokens (CSS variables)                                       */
+/* ------------------------------------------------------------------ */
+:root {
+  /* Typography: one system-font-family stack applied to every text element
+     (Requirement 9.4 - consistent typography). No web fonts (Requirement 7.3). */
+  --font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* Font sizes.
+     Body text 16px - comfortably above the 14px minimum (Requirement 9.3).
+     Transaction entry 16px.
+     Total balance 36px - a 2.25x ratio vs the 16px entry, satisfying the
+     "at least 2x larger" prominence rule (Requirement 9.2). */
+  --body-font-size: 16px;
+  --transaction-font-size: 16px;
+  --balance-font-size: 36px;
+
+  /* Single accent color applied across all four components (Requirement 9.1). */
+  --accent-color: #4f46e5;
+  --accent-color-dark: #4338ca;
+  --accent-color-light: #eef2ff;
+
+  /* Fixed category colors - one distinct color per category. These match the
+     fixed color constants used by the SVG chart renderer (Task 6.1), so the
+     list badges and the chart segments share the exact same colors. */
+  --category-food-color: #ea580c;
+  --category-transport-color: #059669;
+  --category-fun-color: #db2777;
+
+  /* Neutral surfaces and text. */
+  --page-background: #f1f5f9;
+  --card-background: #ffffff;
+  --text-color: #0f172a;
+  --muted-text-color: #64748b;
+  --border-color: #e2e8f0;
+
+  /* Validation and status colors. */
+  --validation-error-color: #dc2626;
+  --error-banner-color: #dc2626;
+  --error-banner-background: #fef2f2;
+  --delete-failure-color: #b45309;
+  --delete-failure-background: #fffbeb;
+
+  /* Uniform spacing, radii, and shadows (Requirement 9.1). */
+  --spacing-small: 8px;
+  --spacing-medium: 16px;
+  --spacing-large: 24px;
+  --border-radius: 12px;
+  --border-radius-small: 8px;
+  --shadow-subtle: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
+  --card-max-width: 720px;
+  --list-max-height: 360px;
+  --chart-size: 320px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Base / reset                                                        */
+/* ------------------------------------------------------------------ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--body-font-size);
+  line-height: 1.5;
+  color: var(--text-color);
+  background-color: var(--page-background);
+}
+
+/* Explicitly apply the single font family to elements that do not inherit it
+   by default in some browsers (Requirement 9.4 - all text elements same family). */
+input,
+select,
+button,
+textarea,
+svg text {
+  font-family: var(--font-family);
+}
+
+/* ------------------------------------------------------------------ */
+/* Page layout                                                         */
+/* ------------------------------------------------------------------ */
+main {
+  max-width: var(--card-max-width);
+  margin: 0 auto;
+  padding: var(--spacing-large) var(--spacing-medium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-medium);
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared storefront card surface                                      */
+/* ------------------------------------------------------------------ */
+#total-balance-display,
+#transaction-form,
+#transaction-list,
+#visual-chart {
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-subtle);
+  padding: var(--spacing-medium);
+}
+
+/* ------------------------------------------------------------------ */
+/* Header / shop banner                                                */
+/* ------------------------------------------------------------------ */
+.shop-banner {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  padding: var(--spacing-large) var(--spacing-medium);
+  text-align: center;
+  box-shadow: var(--shadow-subtle);
+}
+
+.shop-banner h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ------------------------------------------------------------------ */
+/* Total balance display (largest type, top of the page)               */
+/* ------------------------------------------------------------------ */
+#total-balance-display {
+  /* 36px - 2.25x the 16px transaction entry size (Requirement 9.2). */
+  font-size: var(--balance-font-size);
+  font-weight: 700;
+  color: var(--accent-color-dark);
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* ------------------------------------------------------------------ */
+/* Input form (add-to-cart panel)                                      */
+/* ------------------------------------------------------------------ */
+#transaction-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#transaction-form label {
+  font-size: var(--body-font-size);
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+/* Tighten each label to its control, then separate the pairs. */
+#transaction-form label + input,
+#transaction-form label + select {
+  margin-bottom: var(--spacing-small);
+}
+
+#item-name-input,
+#amount-input,
+#category-select {
+  font-size: var(--body-font-size);
+  padding: var(--spacing-small);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
+  background-color: #ffffff;
+  color: var(--text-color);
+  width: 100%;
+}
+
+#category-select {
+  cursor: pointer;
+}
+
+#item-name-input::placeholder,
+#amount-input::placeholder {
+  color: var(--muted-text-color);
+}
+
+#item-name-input:focus,
+#amount-input:focus,
+#category-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-color-light);
+}
+
+/* Primary "Add to cart" action button. */
+#submit-button {
+  font-size: var(--body-font-size);
+  font-weight: 700;
+  color: #ffffff;
+  background-color: var(--accent-color);
+  border: none;
+  border-radius: var(--border-radius-small);
+  padding: var(--spacing-small) var(--spacing-medium);
+  margin-top: var(--spacing-small);
+  width: 100%;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+#submit-button:hover {
+  background-color: var(--accent-color-dark);
+}
+
+#submit-button:active {
+  transform: translateY(1px);
+}
+
+/* Inline validation error element (Requirement 1.4 / 1.5 display). */
+#form-validation-message {
+  margin-top: var(--spacing-small);
+  font-size: var(--body-font-size);
+  font-weight: 600;
+  color: var(--validation-error-color);
+}
+
+#form-validation-message:empty {
+  display: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Transaction list (scrollable cart)                                  */
+/* ------------------------------------------------------------------ */
+#transaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-small);
+  max-height: var(--list-max-height);
+  overflow-y: auto;
+}
+
+.transaction-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-small);
+  padding: var(--spacing-small);
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-small);
+}
+
+.transaction-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--transaction-font-size);
+  font-weight: 600;
+  color: var(--text-color);
+  overflow-wrap: anywhere;
+}
+
+/* Amount styled as a price tag. */
+.transaction-amount {
+  flex: 0 0 auto;
+  font-size: var(--transaction-font-size);
+  font-weight: 700;
+  color: var(--accent-color-dark);
+  white-space: nowrap;
+}
+
+.transaction-category {
+  flex: 0 0 auto;
+  display: inline-flex;
+}
+
+/* Category badge - colored to match the matching chart segment. */
+.category-badge {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  padding: 2px var(--spacing-small);
+  border-radius: 999px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.category-badge--food {
+  background-color: var(--category-food-color);
+}
+
+.category-badge--transport {
+  background-color: var(--category-transport-color);
+}
+
+.category-badge--fun {
+  background-color: var(--category-fun-color);
+}
+
+/* Remove / delete control. */
+.delete-button {
+  flex: 0 0 auto;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--validation-error-color);
+  background-color: transparent;
+  border: 1px solid var(--validation-error-color);
+  border-radius: var(--border-radius-small);
+  padding: 2px var(--spacing-small);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.delete-button:hover {
+  background-color: var(--validation-error-color);
+  color: #ffffff;
+}
+
+/* ------------------------------------------------------------------ */
+/* Visual chart (storefront card with inline SVG pie chart)            */
+/* ------------------------------------------------------------------ */
+#visual-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-small);
+}
+
+#visual-chart svg {
+  width: 100%;
+  max-width: var(--chart-size);
+  height: auto;
+  display: block;
+}
+
+/* Subtle white seams between wedges. */
+#visual-chart path {
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+/* SVG category labels. */
+.chart-label {
+  font-size: 14px;
+  font-weight: 600;
+  fill: var(--text-color);
+}
+
+/* ------------------------------------------------------------------ */
+/* Empty-state placeholders                                            */
+/*   Transaction list: "No transactions yet" (Requirement 2.5)         */
+/*   Visual chart: "No spending data is available" (Requirement 4.4) */
+/* ------------------------------------------------------------------ */
+.empty-state {
+  font-size: var(--body-font-size);
+  color: var(--muted-text-color);
+  text-align: center;
+  padding: var(--spacing-large) var(--spacing-medium);
+}
+
+/* ------------------------------------------------------------------ */
+/* Status banners (non-blocking: persistence, load, delete errors)    */
+/* ------------------------------------------------------------------ */
+.status-banner {
+  font-size: var(--body-font-size);
+  font-weight: 600;
+  padding: var(--spacing-small) var(--spacing-medium);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-small);
+}
+
+/* Generic error look shared by persistence and data-load errors. */
+.status-banner--error,
+.status-banner--persistence-error,
+.status-banner--load-error {
+  color: var(--error-banner-color);
+  background-color: var(--error-banner-background);
+  border-color: var(--error-banner-color);
+}
+
+/* Distinct amber look for delete failures. */
+.status-banner--delete-failure {
+  color: var(--delete-failure-color);
+  background-color: var(--delete-failure-background);
+  border-color: var(--delete-failure-color);
+}
