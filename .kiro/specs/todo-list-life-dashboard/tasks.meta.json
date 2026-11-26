@@ -1,0 +1,222 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Scaffold project structure, HTML skeleton, and test harness": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102493221
+      },
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102515097
+      },
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795103028685
+      }
+    ],
+    "2. Apply the online-shop theme in CSS": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102495928
+      },
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795103033464
+      },
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795104597920
+      }
+    ],
+    "3.1 Implement `validateTransactionInput(itemName, amountString, category)` returning `{ valid: boolean, errors: string[] }`": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102499080
+      },
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795103037489
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795184939791
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795185060629
+      }
+    ],
+    "4.1 Implement `serializeTransactions(transactions)` (JSON.stringify), `deserializeTransactions(jsonString)` (JSON.parse plus per-item structural validation returning `{ ok, data, error }`), `saveTransactions(transactions)` (write under the storage key; return `false` and retain the in-memory set on throw/deny), and `loadTransactions()` (absent key → empty set; parse failure → empty set plus a load-error signal; otherwise the parsed set)": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102500128
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795185066748
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795185340956
+      }
+    ],
+    "5.1 Implement `computeTotalBalance(transactions)` (pure: epsilon-rounded sum to two decimals, `0` for an empty set) and `renderTotalBalance(transactions)` (format to two decimals into `#total-balance-display`, positioned above the list/chart)": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102501067
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795185349450
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795186458582
+      }
+    ],
+    "6.1 Implement `aggregateByCategory(transactions)` (sum per category, `0` for absent), `computeSegmentAngles(categoryTotals, grandTotal)` (one segment per category with total greater than zero; `fraction = total / grandTotal`; angles sum to 360°), `describeArc(centerX, centerY, radius, startAngle, endAngle)` (SVG path `d` for a wedge), and `renderChart(transactions)` (build one labeled, uniquely-colored `<path>` per present category with a fixed color constant per category; render the empty-state message and no segments when there are no transactions or `grandTotal === 0`)": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102501520
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795186464562
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795187071233
+      }
+    ],
+    "7.1 Implement `renderTransactionList(transactions)` (one row per transaction showing item name, amount, and category; a delete control tagged with `data-transaction-id`; empty-state indication when none) and `handleDeleteTransaction(id)` (remove the matching transaction then persist and re-render; if no transaction matches, retain the entry and show a delete-failure indication)": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102502011
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795187076882
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795188273532
+      }
+    ],
+    "8.1 Implement `handleFormSubmit(event)` (validate → create a Transaction with a `crypto.randomUUID()` id, or a timestamp-plus-random fallback → push to the in-memory state → persist → `renderAll()` → clear all input fields; on invalid input, show inline validation messages and do not mutate state), `initDashboard()` (on `DOMContentLoaded`: `loadTransactions()` → populate state → `renderAll()` → attach form-submit and list-delete listeners), `renderAll()` (invoke the list, balance, and chart renderers), and error-display helpers (`showFormValidation`, `clearFormValidation`, `showPersistenceError`, `showLoadError`, `showDeleteFailure`)": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102502495
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795188280097
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795188501865
+      }
+    ],
+    "9. Checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102503064
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795188506865
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795190698286
+      }
+    ],
+    "10. Final checkpoint - Ensure all tests pass": [
+      {
+        "executionId": "01389cd0-ec9b-44c1-ab11-f15f0eb27825",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795102503575
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795190702386
+      },
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795191000378
+      }
+    ],
+    "3. Implement validation and the Transaction data model (pure functions)": [
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795185061532
+      }
+    ],
+    "4. Implement the Local Storage Manager": [
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795185341402
+      }
+    ],
+    "5. Implement Total Balance Display logic": [
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795186459149
+      }
+    ],
+    "6. Implement the SVG pie chart": [
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795187071883
+      }
+    ],
+    "7. Implement Transaction List rendering and delete": [
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795188274397
+      }
+    ],
+    "8. Implement Input Form handler, controller, and wiring": [
+      {
+        "executionId": "3c2702d9-108f-4c81-9706-b724e5f6d7cb",
+        "chatSessionId": "sess_2096a582-eed8-4e2b-a7b7-da8d54d574bb",
+        "timestamp": 1795188502596
+      }
+    ]
+  }
+}
